@@ -329,46 +329,25 @@ Example:
     </div>
 
     <div class="card">
-      <h2>📱 SMS Configuration</h2>
-      <p class="subtitle">Configure SendGrid to send quotes via text message</p>
+      <h2>📱 Daily SMS Setup</h2>
+      <p class="subtitle">SMS delivery is handled by Google Apps Script</p>
       
-      <div id="smsStatus" style="margin-bottom: 20px; padding: 15px; border-radius: 8px; background: #f8f9fa;">
-        <strong>Status:</strong> <span id="smsStatusText">Checking...</span><br>
-        <strong>Phone:</strong> 1-425-208-6648 (T-Mobile)
+      <div style="padding: 15px; border-radius: 8px; background: #f0fdf4; border: 1px solid #86efac; margin-bottom: 15px;">
+        <strong>✅ Free Forever</strong><br>
+        Your daily quotes are sent via Google Apps Script at a random time between 8am-8pm to:<br>
+        <strong>1-425-208-6648</strong> (T-Mobile)
       </div>
 
-      <div class="settings">
-        <div class="form-group">
-          <label for="sendgridApiKey">SendGrid API Key</label>
-          <input type="password" id="sendgridApiKey" placeholder="SG.xxxxxxxxxxxxx">
-          <small style="color: #666; display: block; margin-top: 5px;">
-            <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" style="color: #667eea;">Get a free SendGrid API key</a> (100 emails/day free)
-          </small>
-        </div>
-        <div class="form-group">
-          <label for="fromEmail">From Email</label>
-          <input type="email" id="fromEmail" placeholder="your.email@example.com">
-          <small style="color: #666; display: block; margin-top: 5px;">The email address that will send the SMS (must be verified in SendGrid)</small>
-        </div>
-      </div>
-      <button onclick="configureSMS()">💾 Save SMS Configuration</button>
-    </div>
-
-    <div class="card">
-      <h2>Time Window Settings</h2>
-      <p class="subtitle">Set the hours when quotes can be sent</p>
-      
-      <div class="settings">
-        <div class="form-group">
-          <label for="timeStart">Start Hour (24-hour format)</label>
-          <input type="number" id="timeStart" min="0" max="23" value="8">
-        </div>
-        <div class="form-group">
-          <label for="timeEnd">End Hour (24-hour format)</label>
-          <input type="number" id="timeEnd" min="0" max="23" value="20">
-        </div>
-      </div>
-      <button onclick="saveSettings()">Save Settings</button>
+      <p style="color: #666; line-height: 1.6;">
+        To set up or modify SMS delivery, follow the instructions in <code>APPS_SCRIPT_SETUP.md</code> in your GitHub repo.<br><br>
+        <strong>Key steps:</strong>
+      </p>
+      <ol style="color: #666; line-height: 1.8; margin-left: 20px;">
+        <li>Set <code>DAILY_TOKEN</code> in Render environment variables</li>
+        <li>Create Google Apps Script project at <a href="https://script.google.com" target="_blank" style="color: #667eea;">script.google.com</a></li>
+        <li>Copy code from <code>apps-script.gs</code> in your repo</li>
+        <li>Run the <code>install</code> function once</li>
+      </ol>
     </div>
 
     <div class="card">
@@ -684,66 +663,6 @@ Example:
       // Reset file input
       event.target.value = '';
     }
-
-    // ============ SMS Functions ============
-
-    async function loadSMSStatus() {
-      try {
-        const response = await fetch(`${API_BASE}/api/sms/status`);
-        const status = await response.json();
-        
-        const statusText = document.getElementById('smsStatusText');
-        if (status.configured) {
-          statusText.textContent = '✅ Configured and Ready';
-          statusText.style.color = '#28a745';
-        } else {
-          statusText.textContent = '⚠️ Not Configured - Enter Gmail credentials below';
-          statusText.style.color = '#dc3545';
-        }
-      } catch (error) {
-        console.error('Failed to load SMS status:', error);
-        document.getElementById('smsStatusText').textContent = '❌ Error checking status';
-      }
-    }
-
-    async function configureSMS() {
-      const sendgridApiKey = document.getElementById('sendgridApiKey').value.trim();
-      const fromEmail = document.getElementById('fromEmail').value.trim();
-
-      if (!sendgridApiKey || !fromEmail) {
-        showMessage('Please enter both SendGrid API key and from email', 'error');
-        return;
-      }
-
-      if (!sendgridApiKey.startsWith('SG.')) {
-        showMessage('SendGrid API key should start with "SG."', 'error');
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE}/api/sms/configure`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sendgridApiKey, fromEmail })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          showMessage('SMS configured successfully! You can now receive daily quotes via text.', 'success');
-          loadSMSStatus();
-          // Clear API key field for security
-          document.getElementById('sendgridApiKey').value = '';
-        } else {
-          showMessage(result.error || 'Failed to configure SMS', 'error');
-        }
-      } catch (error) {
-        showMessage('Failed to configure SMS', 'error');
-      }
-    }
-
-    // Load SMS status on page load
-    loadSMSStatus();
   </script>
 </body>
 </html>
