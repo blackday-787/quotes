@@ -294,11 +294,27 @@ app.get('/api/sms/status', (req, res) => {
 
 // ============ Testing Endpoint ============
 
-// Send test notification (now sends SMS)
+// Get next quote preview (for testing)
 app.post('/api/test-notification', async (req, res) => {
   try {
-    const result = await Scheduler.sendTestQuote();
-    res.json(result);
+    const quote = QuoteQueue.getNextQuote();
+    
+    if (!quote) {
+      return res.json({ 
+        success: false, 
+        message: 'No quotes available. Add quotes first!' 
+      });
+    }
+
+    let preview = quote.text;
+    if (quote.author) {
+      preview += `\n\n— ${quote.author}`;
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Next quote preview:\n\n"${preview}"\n\nTo test SMS delivery, use the testNow() function in Google Apps Script.`
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
