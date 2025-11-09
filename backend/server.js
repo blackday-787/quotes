@@ -163,6 +163,63 @@ app.post('/api/test-notification', async (req, res) => {
   }
 });
 
+// ============ Backup/Restore Endpoints ============
+
+// Export all quotes as JSON
+app.get('/api/backup', (req, res) => {
+  try {
+    const quotes = db.prepare('SELECT * FROM quotes ORDER BY added_at').all();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=quotes-backup.json');
+    res.json({
+      backup_date: new Date().toISOString(),
+      quotes: quotes,
+      count: quotes.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import quotes from JSON
+app.post('/api/restore', (req, res) => {
+  try {
+    const { quotes } = req.body;
+    
+    if (!quotes || !Array.isArray(quotes)) {
+      return res.status(400).json({ error: 'Invalid backup format' });
+    }
+
+    let imported = 0;
+    const insert = db.prepare('INSERT INTO quotes (text, added_at, times_sent, last_sent_at) VALUES (?, ?, ?, ?)');
+    
+    quotes.forEach(quote => {
+      try {
+        insert.run(
+          quote.text,
+          quote.added_at || new Date().toISOString(),
+          quote.times_sent || 0,
+          quote.last_sent_at || null
+        );
+        imported++;
+      } catch (err) {
+        console.error('Error importing quote:', err);
+      }
+    });
+
+    // Rebuild queue with imported quotes
+    QuoteQueue.rebuildQueue();
+
+    res.json({ 
+      message: `Successfully imported ${imported} quotes`,
+      imported: imported,
+      total: quotes.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

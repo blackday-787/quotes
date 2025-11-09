@@ -277,6 +277,9 @@
       <div class="button-group">
         <button class="btn-secondary" onclick="resetQueue()">Reset Queue</button>
         <button class="btn-secondary" onclick="sendTestNotification()">Send Test Notification</button>
+        <button class="btn-secondary" onclick="downloadBackup()">💾 Download Backup</button>
+        <button class="btn-secondary" onclick="document.getElementById('restoreFile').click()">📂 Restore Backup</button>
+        <input type="file" id="restoreFile" accept=".json" style="display: none;" onchange="restoreBackup(event)">
       </div>
     </div>
 
@@ -525,6 +528,69 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    async function downloadBackup() {
+      try {
+        const response = await fetch(`${API_BASE}/api/backup`);
+        const data = await response.json();
+        
+        // Create downloadable file
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quotes-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showMessage(`Backup downloaded! ${data.count} quotes saved.`, 'success');
+      } catch (error) {
+        showMessage('Failed to download backup', 'error');
+      }
+    }
+
+    async function restoreBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        if (!backup.quotes || !Array.isArray(backup.quotes)) {
+          showMessage('Invalid backup file format', 'error');
+          return;
+        }
+
+        const confirmMsg = `This will import ${backup.quotes.length} quotes from backup.\n\nExisting quotes will remain. Continue?`;
+        if (!confirm(confirmMsg)) {
+          return;
+        }
+
+        const response = await fetch(`${API_BASE}/api/restore`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quotes: backup.quotes })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showMessage(result.message, 'success');
+          loadQuotes();
+          loadStatus();
+        } else {
+          showMessage(result.error || 'Failed to restore backup', 'error');
+        }
+      } catch (error) {
+        showMessage('Failed to read or restore backup file', 'error');
+      }
+
+      // Reset file input
+      event.target.value = '';
     }
   </script>
 </body>
