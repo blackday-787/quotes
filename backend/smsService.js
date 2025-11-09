@@ -9,11 +9,18 @@ class SMSService {
   // Configure email settings (user provides Gmail credentials)
   configure(gmailUser, gmailAppPassword) {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // use TLS
       auth: {
         user: gmailUser,
-        pass: gmailAppPassword // App-specific password from Gmail
-      }
+        pass: gmailAppPassword
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      connectionTimeout: 10000, // 10 second timeout
+      greetingTimeout: 10000
     });
   }
 
