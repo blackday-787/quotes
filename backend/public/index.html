@@ -238,6 +238,22 @@
       outline: none;
       border-color: #667eea;
     }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
   </style>
 </head>
 <body>
@@ -281,6 +297,32 @@
         <button class="btn-secondary" onclick="document.getElementById('restoreFile').click()">📂 Restore Backup</button>
         <input type="file" id="restoreFile" accept=".json" style="display: none;" onchange="restoreBackup(event)">
       </div>
+    </div>
+
+    <div class="card">
+      <h2>📱 SMS Configuration</h2>
+      <p class="subtitle">Configure Gmail to send quotes via text message</p>
+      
+      <div id="smsStatus" style="margin-bottom: 20px; padding: 15px; border-radius: 8px; background: #f8f9fa;">
+        <strong>Status:</strong> <span id="smsStatusText">Checking...</span><br>
+        <strong>Phone:</strong> 1-425-208-6648 (T-Mobile)
+      </div>
+
+      <div class="settings">
+        <div class="form-group">
+          <label for="gmailUser">Gmail Address</label>
+          <input type="email" id="gmailUser" placeholder="your.email@gmail.com">
+          <small style="color: #666; display: block; margin-top: 5px;">Your Gmail account that will send the SMS</small>
+        </div>
+        <div class="form-group">
+          <label for="gmailAppPassword">Gmail App Password</label>
+          <input type="password" id="gmailAppPassword" placeholder="16-character app password">
+          <small style="color: #666; display: block; margin-top: 5px;">
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #667eea;">Get an App Password</a> (not your regular Gmail password!)
+          </small>
+        </div>
+      </div>
+      <button onclick="configureSMS()">💾 Save SMS Configuration</button>
     </div>
 
     <div class="card">
@@ -592,6 +634,66 @@
       // Reset file input
       event.target.value = '';
     }
+
+    // ============ SMS Functions ============
+
+    async function loadSMSStatus() {
+      try {
+        const response = await fetch(`${API_BASE}/api/sms/status`);
+        const status = await response.json();
+        
+        const statusText = document.getElementById('smsStatusText');
+        if (status.configured) {
+          statusText.textContent = '✅ Configured and Ready';
+          statusText.style.color = '#28a745';
+        } else {
+          statusText.textContent = '⚠️ Not Configured - Enter Gmail credentials below';
+          statusText.style.color = '#dc3545';
+        }
+      } catch (error) {
+        console.error('Failed to load SMS status:', error);
+        document.getElementById('smsStatusText').textContent = '❌ Error checking status';
+      }
+    }
+
+    async function configureSMS() {
+      const gmailUser = document.getElementById('gmailUser').value.trim();
+      const gmailAppPassword = document.getElementById('gmailAppPassword').value.trim();
+
+      if (!gmailUser || !gmailAppPassword) {
+        showMessage('Please enter both Gmail address and app password', 'error');
+        return;
+      }
+
+      if (!gmailUser.includes('@gmail.com')) {
+        showMessage('Please use a Gmail address', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/sms/configure`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gmailUser, gmailAppPassword })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showMessage('SMS configured successfully! You can now receive daily quotes via text.', 'success');
+          loadSMSStatus();
+          // Clear password field for security
+          document.getElementById('gmailAppPassword').value = '';
+        } else {
+          showMessage(result.error || 'Failed to configure SMS', 'error');
+        }
+      } catch (error) {
+        showMessage('Failed to configure SMS', 'error');
+      }
+    }
+
+    // Load SMS status on page load
+    loadSMSStatus();
   </script>
 </body>
 </html>

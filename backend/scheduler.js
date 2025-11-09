@@ -1,9 +1,7 @@
 const cron = require('node-cron');
-const { Expo } = require('expo-server-sdk');
 const db = require('./db');
 const QuoteQueue = require('./quoteQueue');
-
-const expo = new Expo();
+const SMSService = require('./smsService');
 
 class Scheduler {
   static init() {
@@ -59,11 +57,9 @@ class Scheduler {
         return;
       }
 
-      // Get all push tokens
-      const tokens = db.prepare('SELECT token FROM push_tokens').all();
-      
-      if (tokens.length === 0) {
-        console.log('No push tokens registered');
+      // Check if SMS is configured
+      if (!SMSService.isConfigured()) {
+        console.log('SMS service not configured');
         // Still mark as sent
         QuoteQueue.markQuoteSent(quote.id);
         const today = new Date().toISOString().split('T')[0];
@@ -71,33 +67,15 @@ class Scheduler {
         return;
       }
 
-      // Send push notifications
-      const messages = tokens.map(({ token }) => ({
-        to: token,
-        sound: 'default',
-        title: 'Daily Quote',
-        body: quote.text,
-        data: { quoteId: quote.id }
-      }));
-
-      // Send in chunks
-      const chunks = expo.chunkPushNotifications(messages);
-      
-      for (const chunk of chunks) {
-        try {
-          const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-          console.log('Sent notification chunk:', ticketChunk);
-        } catch (error) {
-          console.error('Error sending chunk:', error);
-        }
-      }
+      // Send SMS
+      await SMSService.sendSMS(quote.text);
 
       // Mark quote as sent and update last sent date
       QuoteQueue.markQuoteSent(quote.id);
       const today = new Date().toISOString().split('T')[0];
       db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(today, 'last_sent_date');
 
-      console.log(`Sent quote: "${quote.text}"`);
+      console.log(`Sent SMS quote: "${quote.text}"`);
     } catch (error) {
       console.error('Error sending daily quote:', error);
     }
@@ -111,28 +89,13 @@ class Scheduler {
       return { success: false, message: 'No quotes available' };
     }
 
-    const tokens = db.prepare('SELECT token FROM push_tokens').all();
-    
-    if (tokens.length === 0) {
-      return { success: false, message: 'No push tokens registered' };
+    if (!SMSService.isConfigured()) {
+      return { success: false, message: 'SMS service not configured. Please set up Gmail credentials.' };
     }
 
     try {
-      const messages = tokens.map(({ token }) => ({
-        to: token,
-        sound: 'default',
-        title: 'Test Quote',
-        body: quote.text,
-        data: { quoteId: quote.id, test: true }
-      }));
-
-      const chunks = expo.chunkPushNotifications(messages);
-      
-      for (const chunk of chunks) {
-        await expo.sendPushNotificationsAsync(chunk);
-      }
-
-      return { success: true, message: `Sent test quote: "${quote.text}"` };
+      await SMSService.sendSMS(`TEST: ${quote.text}`);
+      return { success: true, message: `Sent test SMS: "${quote.text}"` };
     } catch (error) {
       console.error('Error sending test quote:', error);
       return { success: false, message: error.message };

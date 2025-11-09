@@ -151,9 +151,38 @@ app.post('/api/settings', (req, res) => {
   }
 });
 
+// ============ SMS Configuration Endpoints ============
+
+const SMSService = require('./smsService');
+
+// Configure SMS (Gmail credentials)
+app.post('/api/sms/configure', (req, res) => {
+  try {
+    const { gmailUser, gmailAppPassword } = req.body;
+    
+    if (!gmailUser || !gmailAppPassword) {
+      return res.status(400).json({ error: 'Gmail user and app password are required' });
+    }
+
+    SMSService.configure(gmailUser, gmailAppPassword);
+    res.json({ message: 'SMS service configured successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get SMS configuration status
+app.get('/api/sms/status', (req, res) => {
+  res.json({ 
+    configured: SMSService.isConfigured(),
+    phoneNumber: '14252086648',
+    carrier: 'T-Mobile'
+  });
+});
+
 // ============ Testing Endpoint ============
 
-// Send test notification
+// Send test notification (now sends SMS)
 app.post('/api/test-notification', async (req, res) => {
   try {
     const result = await Scheduler.sendTestQuote();
