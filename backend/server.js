@@ -213,6 +213,17 @@ app.post('/api/queue/rebuild', (req, res) => {
   }
 });
 
+// Clear today's sent log (for testing)
+app.post('/api/queue/clear-today', (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    db.prepare('DELETE FROM day_log WHERE day = ?').run(today);
+    res.json({ message: 'Today\'s log cleared. You can now test sending again.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============ Push Token Endpoints ============
 
 // Register push token

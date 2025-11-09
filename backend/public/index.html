@@ -321,6 +321,7 @@ Example:
       </div>
       <div class="button-group">
         <button class="btn-secondary" onclick="resetQueue()">Reset Queue</button>
+        <button class="btn-secondary" onclick="clearToday()">🧪 Clear Today's Log</button>
         <button class="btn-secondary" onclick="sendTestNotification()">👁️ Preview Next Quote</button>
         <button class="btn-secondary" onclick="downloadBackup()">💾 Download Backup</button>
         <button class="btn-secondary" onclick="document.getElementById('restoreFile').click()">📂 Restore Backup</button>
@@ -560,6 +561,28 @@ Example:
           loadStatus();
         } else {
           showMessage('Failed to reset queue', 'error');
+        }
+      } catch (error) {
+        showMessage('Failed to connect to server', 'error');
+      }
+    }
+
+    async function clearToday() {
+      if (!confirm('Clear today\'s sent log? This allows you to test sending another quote today via Google Apps Script.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/queue/clear-today`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage(data.message, 'success');
+        } else {
+          showMessage(data.error || 'Failed to clear today\'s log', 'error');
         }
       } catch (error) {
         showMessage('Failed to connect to server', 'error');
