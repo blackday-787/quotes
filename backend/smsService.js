@@ -31,7 +31,10 @@ class SMSService {
       return true;
     } catch (error) {
       console.error('Failed to send SMS:', error);
-      throw error;
+      if (error.response) {
+        console.error('SendGrid error details:', error.response.body);
+      }
+      throw new Error(error.response?.body?.errors?.[0]?.message || error.message);
     }
   }
 
