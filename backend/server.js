@@ -155,16 +155,16 @@ app.post('/api/settings', (req, res) => {
 
 const SMSService = require('./smsService');
 
-// Configure SMS (Gmail credentials)
+// Configure SMS (SendGrid API key)
 app.post('/api/sms/configure', (req, res) => {
   try {
-    const { gmailUser, gmailAppPassword } = req.body;
+    const { sendgridApiKey, fromEmail } = req.body;
     
-    if (!gmailUser || !gmailAppPassword) {
-      return res.status(400).json({ error: 'Gmail user and app password are required' });
+    if (!sendgridApiKey || !fromEmail) {
+      return res.status(400).json({ error: 'SendGrid API key and from email are required' });
     }
 
-    SMSService.configure(gmailUser, gmailAppPassword);
+    SMSService.configure(sendgridApiKey, fromEmail);
     res.json({ message: 'SMS service configured successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -301,7 +301,7 @@
 
     <div class="card">
       <h2>📱 SMS Configuration</h2>
-      <p class="subtitle">Configure Gmail to send quotes via text message</p>
+      <p class="subtitle">Configure SendGrid to send quotes via text message</p>
       
       <div id="smsStatus" style="margin-bottom: 20px; padding: 15px; border-radius: 8px; background: #f8f9fa;">
         <strong>Status:</strong> <span id="smsStatusText">Checking...</span><br>
@@ -310,16 +310,16 @@
 
       <div class="settings">
         <div class="form-group">
-          <label for="gmailUser">Gmail Address</label>
-          <input type="email" id="gmailUser" placeholder="your.email@gmail.com">
-          <small style="color: #666; display: block; margin-top: 5px;">Your Gmail account that will send the SMS</small>
+          <label for="sendgridApiKey">SendGrid API Key</label>
+          <input type="password" id="sendgridApiKey" placeholder="SG.xxxxxxxxxxxxx">
+          <small style="color: #666; display: block; margin-top: 5px;">
+            <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" style="color: #667eea;">Get a free SendGrid API key</a> (100 emails/day free)
+          </small>
         </div>
         <div class="form-group">
-          <label for="gmailAppPassword">Gmail App Password</label>
-          <input type="password" id="gmailAppPassword" placeholder="16-character app password">
-          <small style="color: #666; display: block; margin-top: 5px;">
-            <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color: #667eea;">Get an App Password</a> (not your regular Gmail password!)
-          </small>
+          <label for="fromEmail">From Email</label>
+          <input type="email" id="fromEmail" placeholder="your.email@example.com">
+          <small style="color: #666; display: block; margin-top: 5px;">The email address that will send the SMS (must be verified in SendGrid)</small>
         </div>
       </div>
       <button onclick="configureSMS()">💾 Save SMS Configuration</button>
@@ -657,16 +657,16 @@
     }
 
     async function configureSMS() {
-      const gmailUser = document.getElementById('gmailUser').value.trim();
-      const gmailAppPassword = document.getElementById('gmailAppPassword').value.trim();
+      const sendgridApiKey = document.getElementById('sendgridApiKey').value.trim();
+      const fromEmail = document.getElementById('fromEmail').value.trim();
 
-      if (!gmailUser || !gmailAppPassword) {
-        showMessage('Please enter both Gmail address and app password', 'error');
+      if (!sendgridApiKey || !fromEmail) {
+        showMessage('Please enter both SendGrid API key and from email', 'error');
         return;
       }
 
-      if (!gmailUser.includes('@gmail.com')) {
-        showMessage('Please use a Gmail address', 'error');
+      if (!sendgridApiKey.startsWith('SG.')) {
+        showMessage('SendGrid API key should start with "SG."', 'error');
         return;
       }
 
@@ -674,7 +674,7 @@
         const response = await fetch(`${API_BASE}/api/sms/configure`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gmailUser, gmailAppPassword })
+          body: JSON.stringify({ sendgridApiKey, fromEmail })
         });
 
         const result = await response.json();
@@ -682,8 +682,8 @@
         if (response.ok) {
           showMessage('SMS configured successfully! You can now receive daily quotes via text.', 'success');
           loadSMSStatus();
-          // Clear password field for security
-          document.getElementById('gmailAppPassword').value = '';
+          // Clear API key field for security
+          document.getElementById('sendgridApiKey').value = '';
         } else {
           showMessage(result.error || 'Failed to configure SMS', 'error');
         }
