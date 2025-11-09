@@ -5,7 +5,7 @@ class QuoteQueue {
   static getNextQuote() {
     // First, check if we have unsent quotes in the queue
     const unsentQuote = db.prepare(`
-      SELECT q.id, q.text 
+      SELECT q.id, q.text, q.author 
       FROM quotes q
       JOIN quote_queue qq ON q.id = qq.quote_id
       WHERE qq.sent = 0
@@ -22,7 +22,7 @@ class QuoteQueue {
     
     // Try again
     return db.prepare(`
-      SELECT q.id, q.text 
+      SELECT q.id, q.text, q.author 
       FROM quotes q
       JOIN quote_queue qq ON q.id = qq.quote_id
       WHERE qq.sent = 0

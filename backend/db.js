@@ -10,6 +10,7 @@ function initDB() {
     CREATE TABLE IF NOT EXISTS quotes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       text TEXT NOT NULL,
+      author TEXT,
       added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       times_sent INTEGER DEFAULT 0,
       last_sent_at DATETIME

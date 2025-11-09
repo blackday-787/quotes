@@ -95,7 +95,14 @@ function sendDaily() {
     // If we got a quote, send it
     if (data && data.quote && data.quote.text) {
       var quoteText = data.quote.text;
+      var quoteAuthor = data.quote.author;
       var quoteId = data.quote.id;
+      
+      // Format message with author if present
+      var message = quoteText;
+      if (quoteAuthor) {
+        message = quoteText + "\n\n— " + quoteAuthor;
+      }
       
       // Send email to SMS gateway
       MailApp.sendEmail({
@@ -103,10 +110,10 @@ function sendDaily() {
         subject: "", // Empty subject for cleaner SMS
         htmlBody: "", // Keep empty to reduce truncation
         name: FROM_NAME,
-        body: quoteText
+        body: message
       });
       
-      Logger.log('📱 SMS sent: "' + quoteText + '"');
+      Logger.log('📱 SMS sent: "' + message + '"');
       
       // Confirm successful send to backend
       UrlFetchApp.fetch(BASE_URL + "/confirm-send", {

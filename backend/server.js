@@ -83,17 +83,13 @@ app.get('/api/quotes', (req, res) => {
 // Add new quote
 app.post('/api/quotes', (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, author } = req.body;
     
     if (!text || text.trim().length === 0) {
       return res.status(400).json({ error: 'Quote text is required' });
     }
 
-    if (text.length > 178) {
-      return res.status(400).json({ error: 'Quote must be 178 characters or less for iOS notifications' });
-    }
-
-    const result = db.prepare('INSERT INTO quotes (text) VALUES (?)').run(text.trim());
+    const result = db.prepare('INSERT INTO quotes (text, author) VALUES (?, ?)').run(text.trim(), author ? author.trim() : null);
     
     // Add to queue at the end
     const maxPosition = db.prepare('SELECT MAX(position) as max FROM quote_queue').get();
@@ -105,6 +101,7 @@ app.post('/api/quotes', (req, res) => {
     res.json({ 
       id: result.lastInsertRowid, 
       text: text.trim(),
+      author: author ? author.trim() : null,
       message: 'Quote added successfully' 
     });
   } catch (error) {
@@ -118,6 +115,75 @@ app.delete('/api/quotes/:id', (req, res) => {
     const { id } = req.params;
     db.prepare('DELETE FROM quotes WHERE id = ?').run(id);
     res.json({ message: 'Quote deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload CSV with quotes
+app.post('/api/quotes/upload', (req, res) => {
+  try {
+    const { csv } = req.body;
+    
+    if (!csv || csv.trim().length === 0) {
+      return res.status(400).json({ error: 'CSV data is required' });
+    }
+
+    // Parse CSV (simple parser for quote,author format)
+    const lines = csv.trim().split('\n');
+    let imported = 0;
+    let errors = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Split by comma, but handle quotes
+      const match = line.match(/^"([^"]*)"|^([^,]*),\s*"([^"]*)"|,\s*(.*)$/);
+      let text, author;
+
+      if (line.includes('","')) {
+        // Handle "quote","author" format
+        const parts = line.split('","');
+        text = parts[0].replace(/^"/, '');
+        author = parts[1].replace(/"$/, '');
+      } else if (line.includes(',')) {
+        // Handle quote,author format
+        const commaIndex = line.indexOf(',');
+        text = line.substring(0, commaIndex).trim().replace(/^"|"$/g, '');
+        author = line.substring(commaIndex + 1).trim().replace(/^"|"$/g, '');
+      } else {
+        // Just quote, no author
+        text = line.replace(/^"|"$/g, '');
+        author = null;
+      }
+
+      if (!text || text.trim().length === 0) {
+        errors.push(`Line ${i + 1}: Empty quote`);
+        continue;
+      }
+
+      try {
+        const result = db.prepare('INSERT INTO quotes (text, author) VALUES (?, ?)').run(text.trim(), author ? author.trim() : null);
+        
+        // Add to queue at the end
+        const maxPosition = db.prepare('SELECT MAX(position) as max FROM quote_queue').get();
+        const newPosition = (maxPosition.max || -1) + 1;
+        
+        db.prepare('INSERT INTO quote_queue (quote_id, position, sent) VALUES (?, ?, 0)')
+          .run(result.lastInsertRowid, newPosition);
+        
+        imported++;
+      } catch (err) {
+        errors.push(`Line ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({ 
+      message: `Imported ${imported} quotes`,
+      imported,
+      errors: errors.length > 0 ? errors : undefined
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
