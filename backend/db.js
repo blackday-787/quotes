@@ -44,6 +44,15 @@ function initDB() {
     )
   `);
 
+  // Day log table to track one quote per day (for Google Apps Script)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS day_log (
+      day TEXT PRIMARY KEY,
+      quote_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Initialize default settings
   const setDefault = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   setDefault.run('time_window_start', '8');  // 8 AM

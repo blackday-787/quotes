@@ -1,12 +1,20 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const db = require('./db');
 const QuoteQueue = require('./quoteQueue');
 const Scheduler = require('./scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Generate or use existing daily token for Google Apps Script authentication
+const DAILY_TOKEN = process.env.DAILY_TOKEN || crypto.randomBytes(16).toString('hex');
+if (!process.env.DAILY_TOKEN) {
+  console.log('⚠️  No DAILY_TOKEN set. Generated token:', DAILY_TOKEN);
+  console.log('   Add this to your Render environment variables!');
+}
 
 // Middleware
 app.use(cors());
@@ -15,6 +23,44 @@ app.use(express.static('public'));
 
 // Initialize scheduler
 Scheduler.init();
+
+// ============ Google Apps Script Endpoints ============
+
+// Get next quote for today (called once daily by Apps Script)
+app.get('/next-quote', (req, res) => {
+  try {
+    if (req.query.token !== DAILY_TOKEN) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+
+    const quote = QuoteQueue.getNextQuoteForToday();
+    if (!quote) {
+      return res.json({ quote: null });
+    }
+
+    res.json({ quote: { id: quote.id, text: quote.text } });
+  } catch (error) {
+    console.error('Error getting next quote:', error);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Confirm quote was sent successfully (called by Apps Script after sending)
+app.post('/confirm-send', (req, res) => {
+  try {
+    const { id, token } = req.body || {};
+    
+    if (token !== DAILY_TOKEN) {
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+
+    QuoteQueue.confirmQuoteSent(id);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error confirming send:', error);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
 
 // ============ Quote Endpoints ============
 

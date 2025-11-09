@@ -93,6 +93,29 @@ class QuoteQueue {
       remainingThisCycle: unsent.count
     };
   }
+
+  // Get next quote for today (Google Apps Script integration)
+  static getNextQuoteForToday() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check if we already served a quote today
+    const used = db.prepare('SELECT id FROM day_log WHERE day = ?').get(today);
+    if (used) return null;
+
+    // Get the next unsent quote
+    const quote = this.getNextQuote();
+    if (!quote) return null;
+
+    // Reserve this day so we won't hand out more than one quote
+    db.prepare('INSERT INTO day_log (day, quote_id) VALUES (?, ?)').run(today, quote.id);
+
+    return quote;
+  }
+
+  // Confirm quote was sent successfully (Google Apps Script integration)
+  static confirmQuoteSent(quoteId) {
+    this.markQuoteSent(quoteId);
+  }
 }
 
 module.exports = QuoteQueue;
