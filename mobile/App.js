@@ -19,7 +19,7 @@ Notifications.setNotificationHandler({
 });
 
 // IMPORTANT: Update this with your Render deployment URL after deployment
-export const API_URL = 'http://localhost:3000'; // Change to https://your-app.onrender.com
+export const API_URL = 'https://quotes-07du.onrender.com';
 
 const Tab = createBottomTabNavigator();
 
