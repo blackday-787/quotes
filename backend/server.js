@@ -21,6 +21,50 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Auto-restore quotes from backup on startup if database is empty
+function autoRestoreQuotes() {
+  try {
+    const count = db.prepare('SELECT COUNT(*) as count FROM quotes').get();
+    if (count.count === 0) {
+      const fs = require('fs');
+      const path = require('path');
+      const backupFile = path.join(__dirname, 'quotes-backup.json');
+      
+      if (fs.existsSync(backupFile)) {
+        const backup = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
+        if (backup && backup.length > 0) {
+          console.log(`Restoring ${backup.length} quotes from backup...`);
+          backup.forEach(quote => {
+            const result = db.prepare('INSERT INTO quotes (text, author) VALUES (?, ?)').run(quote.text, quote.author || null);
+            const maxPosition = db.prepare('SELECT MAX(position) as max FROM quote_queue').get();
+            const newPosition = (maxPosition.max || -1) + 1;
+            db.prepare('INSERT INTO quote_queue (quote_id, position, sent) VALUES (?, ?, 0)').run(result.lastInsertRowid, newPosition);
+          });
+          console.log('✅ Quotes restored from backup');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to auto-restore quotes:', error);
+  }
+}
+
+autoRestoreQuotes();
+
+// Auto-save backup whenever quotes change
+function saveBackupFile() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const quotes = db.prepare('SELECT text, author FROM quotes ORDER BY added_at').all();
+    const backupFile = path.join(__dirname, 'quotes-backup.json');
+    fs.writeFileSync(backupFile, JSON.stringify(quotes, null, 2));
+    console.log(`💾 Backup saved: ${quotes.length} quotes`);
+  } catch (error) {
+    console.error('Failed to save backup:', error);
+  }
+}
+
 // Initialize scheduler
 Scheduler.init();
 
@@ -98,6 +142,8 @@ app.post('/api/quotes', (req, res) => {
     db.prepare('INSERT INTO quote_queue (quote_id, position, sent) VALUES (?, ?, 0)')
       .run(result.lastInsertRowid, newPosition);
 
+    saveBackupFile(); // Auto-save backup
+
     res.json({ 
       id: result.lastInsertRowid, 
       text: text.trim(),
@@ -114,6 +160,7 @@ app.delete('/api/quotes/:id', (req, res) => {
   try {
     const { id } = req.params;
     db.prepare('DELETE FROM quotes WHERE id = ?').run(id);
+    saveBackupFile(); // Auto-save backup
     res.json({ message: 'Quote deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -178,6 +225,8 @@ app.post('/api/quotes/upload', (req, res) => {
         errors.push(`Line ${i + 1}: ${err.message}`);
       }
     }
+
+    saveBackupFile(); // Auto-save backup
 
     res.json({ 
       message: `Imported ${imported} quotes`,
