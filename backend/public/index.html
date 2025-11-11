@@ -322,7 +322,7 @@ Example:
       <div class="button-group">
         <button class="btn-secondary" onclick="resetQueue()">Reset Queue</button>
         <button class="btn-secondary" onclick="clearToday()">🧪 Clear Today's Log</button>
-        <button class="btn-secondary" onclick="sendTestNotification()">👁️ Preview Next Quote</button>
+        <button class="btn-secondary" onclick="sendTestNotification()">📱 Send Test SMS</button>
         <button class="btn-secondary" onclick="downloadBackup()">💾 Download Backup</button>
         <button class="btn-secondary" onclick="document.getElementById('restoreFile').click()">📂 Restore Backup</button>
         <input type="file" id="restoreFile" accept=".json" style="display: none;" onchange="restoreBackup(event)">
@@ -331,24 +331,28 @@ Example:
 
     <div class="card">
       <h2>📱 Daily SMS Setup</h2>
-      <p class="subtitle">SMS delivery is handled by Google Apps Script</p>
+      <p class="subtitle">SMS delivery via Twilio</p>
       
-      <div style="padding: 15px; border-radius: 8px; background: #f0fdf4; border: 1px solid #86efac; margin-bottom: 15px;">
-        <strong>✅ Free Forever</strong><br>
-        Your daily quotes are sent via Google Apps Script at a random time between 8am-8pm to:<br>
-        <strong>1-425-208-6648</strong> (T-Mobile)
+      <div id="twilioStatus" style="padding: 15px; border-radius: 8px; background: #f0fdf4; border: 1px solid #86efac; margin-bottom: 15px;">
+        <strong>✅ Configured</strong><br>
+        Daily quotes sent automatically at random time (8am-8pm) to:<br>
+        <strong>1-425-208-6648</strong>
       </div>
 
       <p style="color: #666; line-height: 1.6;">
-        To set up or modify SMS delivery, follow the instructions in <code>APPS_SCRIPT_SETUP.md</code> in your GitHub repo.<br><br>
-        <strong>Key steps:</strong>
+        <strong>How it works:</strong>
       </p>
-      <ol style="color: #666; line-height: 1.8; margin-left: 20px;">
-        <li>Set <code>DAILY_TOKEN</code> in Render environment variables</li>
-        <li>Create Google Apps Script project at <a href="https://script.google.com" target="_blank" style="color: #667eea;">script.google.com</a></li>
-        <li>Copy code from <code>apps-script.gs</code> in your repo</li>
-        <li>Run the <code>install</code> function once</li>
-      </ol>
+      <ul style="color: #666; line-height: 1.8; margin-left: 20px;">
+        <li>Backend checks every hour between 8am-8pm</li>
+        <li>Randomly picks one hour to send that day's quote</li>
+        <li>Automatically sends via Twilio SMS</li>
+        <li>Quotes rotate through queue without repeating</li>
+      </ul>
+
+      <p style="color: #666; line-height: 1.6; margin-top: 15px;">
+        <strong>Using Twilio free trial credit:</strong> You get free SMS credits to start. 
+        <a href="https://console.twilio.com" target="_blank" style="color: #667eea;">Check your balance →</a>
+      </p>
     </div>
 
     <div class="card">

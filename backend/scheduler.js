@@ -67,15 +67,21 @@ class Scheduler {
         return;
       }
 
+      // Format message with author if present
+      let message = quote.text;
+      if (quote.author) {
+        message += `\n\n— ${quote.author}`;
+      }
+
       // Send SMS
-      await SMSService.sendSMS(quote.text);
+      await SMSService.sendSMS(message);
 
       // Mark quote as sent and update last sent date
       QuoteQueue.markQuoteSent(quote.id);
       const today = new Date().toISOString().split('T')[0];
       db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(today, 'last_sent_date');
 
-      console.log(`Sent SMS quote: "${quote.text}"`);
+      console.log(`✅ Sent SMS quote: "${message}"`);
     } catch (error) {
       console.error('Error sending daily quote:', error);
     }
@@ -90,12 +96,18 @@ class Scheduler {
     }
 
     if (!SMSService.isConfigured()) {
-      return { success: false, message: 'SMS service not configured. Please set up Gmail credentials.' };
+      return { success: false, message: 'Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER in Render environment variables.' };
     }
 
     try {
-      await SMSService.sendSMS(`TEST: ${quote.text}`);
-      return { success: true, message: `Sent test SMS: "${quote.text}"` };
+      // Format message with author if present
+      let message = `TEST: ${quote.text}`;
+      if (quote.author) {
+        message += `\n\n— ${quote.author}`;
+      }
+
+      await SMSService.sendSMS(message);
+      return { success: true, message: `Sent test SMS: "${message}"` };
     } catch (error) {
       console.error('Error sending test quote:', error);
       return { success: false, message: error.message };

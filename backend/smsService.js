@@ -1,46 +1,48 @@
-const sgMail = require('@sendgrid/mail');
-
 class SMSService {
   constructor() {
-    this.configured = false;
-    this.smsEmail = '14252086648@tmomail.net'; // T-Mobile SMS gateway
-    this.fromEmail = null;
+    this.client = null;
+    this.fromNumber = null;
+    this.toNumber = '+14252086648'; // Your phone number
+    
+    // Auto-configure from environment variables
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_FROM_NUMBER;
+    
+    if (accountSid && authToken && fromNumber) {
+      const twilio = require('twilio');
+      this.client = twilio(accountSid, authToken);
+      this.fromNumber = fromNumber;
+      console.log('✅ Twilio SMS configured');
+    } else {
+      console.log('⚠️  Twilio not configured - set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER');
+    }
   }
 
-  // Configure SendGrid (user provides API key and from email)
-  configure(sendgridApiKey, fromEmail) {
-    sgMail.setApiKey(sendgridApiKey);
-    this.fromEmail = fromEmail;
-    this.configured = true;
-  }
-
-  // Send SMS via email-to-SMS gateway using SendGrid
+  // Send SMS via Twilio
   async sendSMS(message) {
-    if (!this.configured) {
-      throw new Error('SMS service not configured. Please set up SendGrid API key.');
+    if (!this.client) {
+      throw new Error('Twilio not configured. Set environment variables in Render.');
     }
 
     try {
-      await sgMail.send({
-        to: this.smsEmail,
-        from: this.fromEmail,
-        subject: '', // Empty subject for cleaner SMS
-        text: message
+      const result = await this.client.messages.create({
+        body: message,
+        from: this.fromNumber,
+        to: this.toNumber
       });
-      console.log(`SMS sent successfully to ${this.smsEmail}`);
+      
+      console.log(`✅ SMS sent successfully! SID: ${result.sid}`);
       return true;
     } catch (error) {
-      console.error('Failed to send SMS:', error);
-      if (error.response) {
-        console.error('SendGrid error details:', error.response.body);
-      }
-      throw new Error(error.response?.body?.errors?.[0]?.message || error.message);
+      console.error('❌ Failed to send SMS:', error.message);
+      throw error;
     }
   }
 
   // Test if SMS service is configured
   isConfigured() {
-    return this.configured;
+    return this.client !== null;
   }
 }
 
